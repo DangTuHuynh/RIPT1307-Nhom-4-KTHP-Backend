@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String           @id @default(uuid())
+  username              String           @unique
+  email                 String           @unique
+  password              String
+  full_name             String
+  phone                 String?
+  role                  UserRole         @default(CUSTOMER)
+  // Quan hệ với Pets (nếu là CUSTOMER)
+  ownedPets             Pet[]            @relation("petOwner")
+  // Quan hệ với Appointments (nếu là CUSTOMER hoặc DOCTOR)
+  appointmentsAsCustomer Appointment[]   @relation("customerAppointments")
+  appointmentsAsDoctor   Appointment[]   @relation("doctorAppointments")
+  // Quan hệ với MedicalRecords (nếu là DOCTOR)
+  medicalRecords        MedicalRecord[]  @relation("doctorRecords")
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  DOCTOR
+  CUSTOMER
+}
+
+model Pet {
+  id             String          @id @default(uuid())
+  name           String
+  species        String
+  breed          String?
+  gender         String?
+  birth_date     DateTime?
+  weight         Float?
+  image_url      String?
+  owner          User            @relation("petOwner", fields: [ownerId], references: [id])
+  ownerId        String
+  appointments   Appointment[]
+  medicalRecords MedicalRecord[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Appointment {
+  id               String              @id @default(uuid())
+  pet              Pet                 @relation(fields: [petId], references: [id], onDelete: Cascade)
+  petId            String
+  customer         User                @relation("customerAppointments", fields: [customerId], references: [id])
+  customerId       String
+  doctor           User?               @relation("doctorAppointments", fields: [doctorId], references: [id])
+  doctorId         String?
+  appointment_date DateTime
+  priority_level   PriorityLevel       @default(NORMAL)
+  status           AppointmentStatus   @default(SCHEDULED)
+  reason           String?
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+enum PriorityLevel {
+  EMERGENCY
+  URGENT
+  NORMAL
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model MedicalRecord {
+  id        String   @id @default(uuid())
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  petId     String
+  doctor    User     @relation("doctorRecords", fields: [doctorId], references: [id])
+  doctorId  String
+  visit_date DateTime
+  diagnosis String?
+  treatment String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
